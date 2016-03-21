@@ -1,7 +1,20 @@
+"""
+Data fields
+
+Dates - timestamp of the crime incident
+Category - category of the crime incident (only in train.csv). This is the target variable you are going to predict.
+Descript - detailed description of the crime incident (only in train.csv)
+DayOfWeek - the day of the week
+PdDistrict - name of the Police Department District
+Resolution - how the crime incident was resolved (only in train.csv)
+Address - the approximate street address of the crime incident 
+X - Longitude
+Y - Latitude
+"""
+
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from sklearn.cluster import KMeans
 from sklearn.preprocessing import LabelEncoder
 from sklearn.cross_validation import train_test_split
 from sklearn.preprocessing import OneHotEncoder
@@ -23,6 +36,7 @@ def extract_time(dates):
 
 # 数据处理函数
 def process_data(trainDF, testDF):
+	# 去除train，test中的无用列，并做数据合并
 	trainDF.drop(['Descript', 'Resolution'], axis=1, inplace=True)
 	testDF.drop(['Id'], axis=1, inplace=True)
 	labels = trainDF['Category'].copy()
@@ -60,16 +74,17 @@ def process_data(trainDF, testDF):
 	combi_full = pd.concat([combi, logodds_features], axis=1)
 	xy_scaler = StandardScaler()
 	combi_full[['X', 'Y']] = xy_scaler.fit_transform(combi_full[['X', 'Y']])
+	# 进行label encoding
 	lbe = LabelEncoder()
 	combi_full['DayOfWeek'] = lbe.fit_transform(combi_full['DayOfWeek'])
 	combi_full['PdDistrict'] = lbe.fit_transform(combi_full['PdDistrict'])
-	combi_full['intesect'] = combi_full['Address'].apply(lambda x: 1 if '/' in x else 0)
 	combi_full['Wake'] = combi_full['Hour'].apply(lambda x: 1 if (int(x)>=8 and int(x)<=23) else 0)
 	combi_full["IsDup"]=pd.Series(combi_full.duplicated()|combi_full.duplicated(take_last=True)).apply(int)
 	combi_full.drop(['Address'], axis=1, inplace=True)
 	y = lbe.fit_transform(y)
-	ohe = OneHotEncoder(categorical_features=[0, 1,4,5,6])
-	data = ohe.fit_transform(combi_full.values)
+	# 由于采用xgboost，可不对特征进行dummy处理
+	#ohe = OneHotEncoder(categorical_features=[0, 1,4,5,6])
+	#data = ohe.fit_transform(combi_full.values)
 	train = combi_full.values[:878049, :]
 	test = combi_full.values[878049:, :]
 
